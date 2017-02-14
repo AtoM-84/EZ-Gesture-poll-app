@@ -1,0 +1,30 @@
+{
+  "name": "ez-gesture-poll-app",
+  "version": "1.0.0",
+  "description": "Poll application using the gesture recognition device ez-gesture-inline",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AtoM-84/ez-gesture-poll-app.git"
+  },
+  "keywords": [
+    "poll",
+    "gesture"
+  ],
+  "author": "A. PHELIPOT",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AtoM-84/ez-gesture-poll-app/issues"
+  },
+  "homepage": "https://github.com/AtoM-84/ez-gesture-poll-app#readme",
+  "dependencies": {
+    "express": "^4.14.1",
+    "jade": "^1.11.0",
+    "pug": "^2.0.0-beta11",
+    "serialport": "^4.0.7",
+    "socket.io": "^1.7.2"
+  }
+}
