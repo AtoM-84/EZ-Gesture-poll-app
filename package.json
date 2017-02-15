@@ -4,7 +4,7 @@
   "description": "Poll application using the gesture recognition device ez-gesture-inline",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": ""
   },
   "repository": {
     "type": "git",
@@ -23,8 +23,8 @@
   "dependencies": {
     "express": "^4.14.1",
     "jade": "^1.11.0",
-    "pug": "^2.0.0-beta11",
+    "morgan": "^1.8.1",
     "serialport": "^4.0.7",
-    "socket.io": "^1.7.2"
+    "socket.io": "1.4.5"
   }
 }

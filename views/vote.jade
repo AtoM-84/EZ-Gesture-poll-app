@@ -1,0 +1,17 @@
+doctype html
+html
+  head
+    meta(http-equiv='Content-Type', content='text/html; charset=utf-8')
+    title= title
+    script(src='/socket.io/socket.io.js')
+    script(src='/scripts/d3/d3.min.js')
+    script(src='/scripts/jquery/jquery.min.js')
+  body
+    h1= "GAME"
+    p Welcome to #{title}
+    script.
+        var socket = io.connect('http://localhost');
+        socket.on('news', function (data) {
+        console.log(data);
+        socket.emit('my other event', { my: 'data' });
+        });

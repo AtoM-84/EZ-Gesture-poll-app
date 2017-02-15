@@ -1,0 +1,58 @@
+@font-face {
+    font-family: multicolore;
+    src: url(../fonts/multicolore.otf);
+    font-weight: regular;
+}
+
+@font-face {
+    font-family: coolvetica;
+    src: url(../fonts/coolvetica.ttf);
+    font-weight: regular;
+}
+
+@font-face {
+    font-family: quartzo;
+    src: url(../fonts/quartzo.ttf);
+    font-weight: regular;
+}
+
+@font-face {
+    font-family: cocogoose;
+    src: url(../fonts/cocogoose.otf);
+    font-weight: regular;
+}
+
+
+html, body {
+    margin:0;
+    padding: 0;
+
+}
+
+h1.neon{
+    float: left;
+    position: absolute;
+    top: 4vh;
+    color: rgb(160, 10, 50);
+    height: 10vh;
+    padding: 5vw;
+    margin: auto;
+    text-align: center;
+    font-size: 7vw;
+    font-family: multicolore;
+    text-shadow: 0 0 50px rgba(140, 10, 50, 1);
+}
+
+h1.neon.failed{
+    float: left;
+    position: absolute;
+    top: 4vh;
+    color: rgb(120, 10, 50);
+    height: 10vh;
+    padding: 5vw;
+    margin: auto;
+    text-align: center;
+    font-size: 7vw;
+    font-family: multicolore;
+    text-shadow: none;
+}
