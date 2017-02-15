@@ -6,12 +6,516 @@ html
     script(src='/socket.io/socket.io.js')
     script(src='/scripts/d3/d3.min.js')
     script(src='/scripts/jquery/jquery.min.js')
+    link(rel='stylesheet', type='text/css', href='style/style.css')
+
   body
-    h1= "GAME"
-    p Welcome to #{title}
-    script.
-        var socket = io.connect('http://localhost');
-        socket.on('news', function (data) {
-        console.log(data);
-        socket.emit('my other event', { my: 'data' });
-        });
+    h1.neon Avez vous apprécier les présentations de ce Techno Show?
+    .wrapper
+      .dataViz
+  script(type='text/javascript').
+    var xArea = 250;
+    var yArea = 250;
+    var xPadding = 50, yPadding = 50;
+    var columStart = 1;
+    var columEnd = 6;
+    var barSpacing = 10;
+    var barWidth = (yArea - 2 * yPadding) / (columEnd - columStart) - barSpacing;
+    var scale = 50;
+    var score = [1, 1, 1, 1, 1];
+    var barColor = ["rgb(25,10,50)", "rgb(51,10,50)", "rgb(76,10,50)", "rgb(102,10,50)", "rgb(127,10,50)"];
+    var randomFailureFreq = 3000;
+    var drawingArea = d3.select(".dataViz").append("svg")
+    .attr("class", "pollBargraph")
+    .attr("viewBox", "0 0 250 450");
+    var defs = drawingArea.append("defs");
+    var backgroundGradient = defs.append("linearGradient")
+    .attr("id", "backgroundGradient")
+    .attr("x1", "0%")
+    .attr("y1", "0%")
+    .attr("x2", "60%")
+    .attr("y2", "60%")
+    .attr("spreadMethod", "pad");
+    backgroundGradient.append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", "rgb(10,20,30)")
+    .attr("stop-opacity", 1);
+    backgroundGradient.append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", "rgb(80,90,95)")
+    .attr("stop-opacity", 1);
+    var lightReflection = defs.append("svg:linearGradient")
+    .attr("id", "lightReflection")
+    .attr("x1", "1")
+    .attr("y1", "0")
+    .attr("x2", "0")
+    .attr("y2", "0")
+    .attr("gradientUnits", "objectBoundingBox");
+    lightReflection.append("svg:stop")
+    .attr("offset", "0%")
+    .attr("stop-color", "rgba(255,255,255,0.01)")
+    .attr("stop-opacity", 1);
+    lightReflection.append("svg:stop")
+    .attr("offset", "50%")
+    .attr("stop-color", "rgba(255,255,255,0.15)")
+    .attr("stop-opacity", 1);
+    var pattern = drawingArea.append("defs")
+    .append("pattern")
+    .attr("id", "hash")
+    .attr("width", "1")
+    .attr("height", "2")
+    .attr("patternUnits", "userSpaceOnUse")
+    .attr("patternTransform", "rotate(-45)")
+    .append("rect")
+    .attr("width", "1")
+    .attr("height", "1")
+    .attr("transform", "translate(0,0)")
+    .attr("fill", "white")
+    .attr("fill-opacity", "0.05");
+    // create filter with id #drop-shadow
+    // height=130% so that the shadow is not clipped
+    var filterShadow = defs.append("filter")
+    .attr("id", "drop-shadow")
+    .attr("height", "130%")
+    .attr("width", "130%");
+    // SourceAlpha refers to opacity of graphic that this filter will be applied to
+    // convolve that with a Gaussian with standard deviation 3 and store result
+    // in blur
+    filterShadow.append("feGaussianBlur")
+    .attr("in", "SourceAlpha")
+    .attr("stdDeviation", 1.1)
+    .attr("result", "blur");
+    // translate output of Gaussian blur to the right and downwards with 2px
+    // store result in offsetBlur
+    filterShadow.append("feOffset")
+    .attr("in", "blur")
+    .attr("dx", 0.5)
+    .attr("dy", 0.5)
+    .attr("result", "offsetBlur");
+    // overlay original SourceGraphic over translated blurred opacity by using
+    // feMerge filter. Order of specifying inputs is important!
+    // var feMerge = filter.append("feMerge");
+    var filterGlow = defs.append("filter")
+    .attr("id", "glower")
+    .attr("height", "200%")
+    .attr("width", "200%");
+    filterGlow.append("feGaussianBlur")
+    .attr("in", "SourceGraphic")
+    .attr("result", "blurOut")
+    // .attr("dx", "5")
+    // .attr("dy", "5")
+    .attr("stdDeviation", "1.8");
+    var feMerge = filterGlow.append("feMerge");
+    feMerge.append("feMergeNode")
+    .attr("in", "blurOut");
+    feMerge.append("feMergeNode")
+    .attr("in", "SourceGraphic");
+    drawingArea.append("rect").attr("class", "background")
+    .attr("width", "100%").attr("height", "100%").attr("fill", "url(#backgroundGradient)");
+    drawingArea.append("rect").attr("class", "backgroundHash")
+    .attr("width", "100%").attr("height", "100%").attr("fill", "url(#hash)");
+    drawingArea.selectAll("rect.bars")
+    .data(score).enter()
+    .append("rect")
+    .attr("class", "bars")
+    .attr("x", function (d, i) { return xPadding + barSpacing / 2 + i * (barWidth + barSpacing); })
+    .attr("y", function (d, i) { return yArea - yPadding - 1; })
+    .attr("width", barWidth)
+    .attr("height", 1)
+    .attr("fill", function (d, i) { return barColor[i]; })
+    .attr("rx", "2")
+    .attr("ry", "2")
+    .transition()
+    .delay(200)
+    .duration(700)
+    .attr("y", function (d, i) { return yArea - yPadding - Math.floor((d / scale) * (yArea - 2 * yPadding)); })
+    .attr("height", function (d, i) { return Math.floor((d / scale) * (yArea - 2 * yPadding)); });
+    // .attr("fill", function(d,i) {return "rgb("+Math.floor((d/scale)*255)+",10,50)";});
+    drawingArea.selectAll("rect.barGlow")
+    .data(score).enter()
+    .append("rect")
+    .attr("class", "barGlow")
+    .attr("x", function (d, i) { return xPadding + barSpacing / 2 + i * (barWidth + barSpacing) + 1; })
+    .attr("y", function (d, i) { return yArea - yPadding - 1; })
+    .attr("width", barWidth - 6)
+    .attr("height", 1)
+    .attr("fill", "url(#lightReflection)")
+    .attr("rx", "1")
+    .attr("ry", "1")
+    .transition()
+    .delay(200)
+    .duration(700)
+    .attr("y", function (d, i) { return yArea - yPadding - Math.floor((d / scale) * (yArea - 2 * yPadding)) + 1; })
+    .attr("height", function (d, i) { return Math.floor((d / scale) * (yArea - 2 * yPadding)) - 2; });
+    var triggerBlinker;
+    var blinker;
+    var halo;
+    // Very angry emoticon
+    var veryAngryEmoHighlight = drawingArea.append("g").attr("class", "veryAngryHighlight").attr("transform", "translate(-118,-242)");
+    var veryAngryEmo = drawingArea.append("g").attr("class", "veryAngry").attr("transform", "translate(-118,-242)")
+    .on("mouseover", function () {
+    halo = d3.select("g.veryAngryHighlight").attr("filter", "url(#glower)");
+    var i = 0;
+    triggerBlinker = setTimeout(function () {
+    var blinker = setInterval(function () {
+    if (i == 0 || i == 2 || i == 4) {
+    halo.style("display", "none");
+    i++;
+    }
+    else if (i == 1 || i == 3 || i == 5) {
+    halo.style("display", "block");
+    i++;
+    }
+    else {
+    clearInterval(blinker);
+    d3.select("#plusOneVeryAngry")
+    .attr("fill-opacity", "1")
+    .transition()
+    .ease(d3.easeLinear)
+    .duration(1500)
+    .attr("transform", "translate(0, -25)")
+    .attr("fill-opacity", "0");
+    d3.select("#plusOneVeryAngry").attr("transform", "translate(0, 0)");
+    score[0] = score[0] + 1;
+    updateBars(score);
+    }
+    }, 120);
+    }
+    , 1000);
+    })
+    .on("mouseout", function () {
+    halo.attr("filter", "none");
+    clearInterval(triggerBlinker);
+    });
+    veryAngryEmoHighlight.append("path").attr("d", "M183,484.4c-7.2,0-13,5.8-13,13c0,7.2,5.8,13,13,13s13-5.8,13-13C196,490.2,190.2,484.4,183,484.4z M183,508.4c-6.1,0-11-4.9-11-11c0-0.9,0.1-1.8,0.4-2.7c2.1,1.3,6.1,1.7,10.6,1.7c1.7,0,3.3-0.1,4.8-0.2c-1-0.9-2.2-2.3-2.8-4c-0.8-2.5,3.2,1.9,6.3,3.5c0.9-0.2,1.8-0.5,2.4-0.9c0.2,0.9,0.4,1.8,0.4,2.7C194,503.5,189.1,508.4,183,508.4z")
+    .attr("fill", "rgb(3, 169, 244)");
+    veryAngryEmoHighlight.append("path").attr("d", "M181,501.4c0-0.1,0-0.2,0-0.3l0.7,0.2c0.1,0,0.2,0.1,0.3,0.1c0.4,0,0.8-0.3,0.9-0.7c0.2-0.5-0.1-1.1-0.6-1.3l-6-2c-0.5-0.2-1.1,0.1-1.3,0.6c-0.2,0.5,0.1,1.1,0.6,1.3l1.9,0.6c-0.4,0.4-0.6,0.9-0.6,1.4c0,1.1,0.9,2,2,2C180.1,503.4,181,502.5,181,501.4z M180,500.8c0,0,0,0.1,0,0.1c0,0.3-0.2,0.5-0.5,0.5s-0.5-0.2-0.5-0.5c0-0.2,0.1-0.3,0.2-0.4L180,500.8z")
+    .attr("fill", "rgb(3, 169, 244)");
+    veryAngryEmoHighlight.append("path").attr("d", "M178.8,504.9l0.4,0.9c2.4-1.2,5.2-1.2,7.6,0l0.4-0.9C184.6,503.6,181.4,503.6,178.8,504.9z")
+    .attr("fill", "rgb(3, 169, 244)");
+    veryAngryEmoHighlight.append("path").attr("d", "M189.7,497.4l-6,2c-0.5,0.2-0.8,0.7-0.6,1.3c0.1,0.4,0.5,0.7,0.9,0.7c0.1,0,0.2,0,0.3-0.1l0.7-0.2c0,0.1,0,0.2,0,0.3c0,1.1,0.9,2,2,2c1.1,0,2-0.9,2-2c0-0.6-0.2-1.1-0.6-1.4l1.9-0.6c0.5-0.2,0.8-0.7,0.6-1.3C190.8,497.6,190.2,497.3,189.7,497.4zM187,500.9c0,0.3-0.2,0.5-0.5,0.5s-0.5-0.2-0.5-0.5c0,0,0-0.1,0-0.1l0.8-0.3C186.9,500.6,187,500.7,187,500.9z")
+    .attr("fill", "rgb(3, 169, 244)");
+    veryAngryEmo.append("path").attr("d", "M183,484.4c-7.2,0-13,5.8-13,13c0,7.2,5.8,13,13,13s13-5.8,13-13C196,490.2,190.2,484.4,183,484.4z M183,508.4c-6.1,0-11-4.9-11-11c0-0.9,0.1-1.8,0.4-2.7c2.1,1.3,6.1,1.7,10.6,1.7c1.7,0,3.3-0.1,4.8-0.2c-1-0.9-2.2-2.3-2.8-4c-0.8-2.5,3.2,1.9,6.3,3.5c0.9-0.2,1.8-0.5,2.4-0.9c0.2,0.9,0.4,1.8,0.4,2.7C194,503.5,189.1,508.4,183,508.4z")
+    .attr("fill", "rgb(25, 10, 50)");
+    veryAngryEmo.append("path").attr("d", "M181,501.4c0-0.1,0-0.2,0-0.3l0.7,0.2c0.1,0,0.2,0.1,0.3,0.1c0.4,0,0.8-0.3,0.9-0.7c0.2-0.5-0.1-1.1-0.6-1.3l-6-2c-0.5-0.2-1.1,0.1-1.3,0.6c-0.2,0.5,0.1,1.1,0.6,1.3l1.9,0.6c-0.4,0.4-0.6,0.9-0.6,1.4c0,1.1,0.9,2,2,2C180.1,503.4,181,502.5,181,501.4z M180,500.8c0,0,0,0.1,0,0.1c0,0.3-0.2,0.5-0.5,0.5s-0.5-0.2-0.5-0.5c0-0.2,0.1-0.3,0.2-0.4L180,500.8z")
+    .attr("fill", "rgb(25, 10, 50)");
+    veryAngryEmo.append("path").attr("d", "M178.8,504.9l0.4,0.9c2.4-1.2,5.2-1.2,7.6,0l0.4-0.9C184.6,503.6,181.4,503.6,178.8,504.9z")
+    .attr("fill", "rgb(25, 10, 50)");
+    veryAngryEmo.append("path").attr("d", "M189.7,497.4l-6,2c-0.5,0.2-0.8,0.7-0.6,1.3c0.1,0.4,0.5,0.7,0.9,0.7c0.1,0,0.2,0,0.3-0.1l0.7-0.2c0,0.1,0,0.2,0,0.3c0,1.1,0.9,2,2,2c1.1,0,2-0.9,2-2c0-0.6-0.2-1.1-0.6-1.4l1.9-0.6c0.5-0.2,0.8-0.7,0.6-1.3C190.8,497.6,190.2,497.3,189.7,497.4zM187,500.9c0,0.3-0.2,0.5-0.5,0.5s-0.5-0.2-0.5-0.5c0,0,0-0.1,0-0.1l0.8-0.3C186.9,500.6,187,500.7,187,500.9z")
+    .attr("fill", "rgb(25, 10, 50)");
+    // Angry emoticon
+    var angryEmoHighlight = drawingArea.append("g").attr("class", "angryHighlight").attr("transform", "translate(-190,160)");
+    var angryEmo = drawingArea.append("g").attr("class", "angry").attr("transform", "translate(-190,160)")
+    .on("mouseover", function () {
+    halo = d3.select("g.angryHighlight").attr("filter", "url(#glower)");
+    var i = 0;
+    triggerBlinker = setTimeout(function () {
+    var blinker = setInterval(function () {
+    if (i == 0 || i == 2 || i == 4) {
+    halo.style("display", "none");
+    i++;
+    }
+    else if (i == 1 || i == 3 || i == 5) {
+    halo.style("display", "block");
+    i++;
+    }
+    else {
+    clearInterval(blinker);
+    d3.select("#plusOneAngry")
+    .attr("fill-opacity", "1")
+    .transition()
+    .ease(d3.easeLinear)
+    .duration(1500)
+    .attr("transform", "translate(0, -25)")
+    .attr("fill-opacity", "0");
+    d3.select("#plusOneAngry").attr("transform", "translate(0, 0)");
+    score[1] = score[1] + 1;
+    updateBars(score);
+    }
+    }, 120);
+    }
+    , 1000);
+    })
+    .on("mouseout", function () {
+    halo.attr("filter", "none");
+    clearInterval(triggerBlinker);
+    });
+    // .style("filter", "url(#drop-shadow)");
+    angryEmoHighlight.append("path").attr("d", "M285,82c-7.18,0-13,5.82-13,13s5.82,13,13,13c7.18,0,13-5.82,13-13S292.18,82,285,82z M285,106c-6.065,0-11-4.935-11-11c0-0.936,0.13-1.839,0.351-2.707C276.422,93.546,280.408,94,285,94c1.713,0,3.337-0.066,4.814-0.209c-0.954-0.87-2.228-2.282-2.814-4.043c-0.83-2.49,3.164,1.908,6.261,3.475c0.948-0.242,1.759-0.548,2.389-0.93C295.87,93.161,296,94.064,296,95C296,101.065,291.065,106,285,106z")
+    .attr("fill", "rgb(3, 169, 244)");
+    angryEmoHighlight.append("path").attr("d", "M283,97c0-1.104-0.896-2-2-2s-2,0.896-2,2c0,1.104,0.896,2,2,2S283,98.104,283,97z M281.5,96c0.276,0,0.5,0.224,0.5,0.5s-0.224,0.5-0.5,0.5s-0.5-0.224-0.5-0.5S281.224,96,281.5,96z")
+    .attr("fill", "rgb(3, 169, 244)");
+    angryEmoHighlight.append("path").attr("d", "M289,95c-1.104,0-2,0.896-2,2c0,1.104,0.896,2,2,2s2-0.896,2-2C291,95.896,290.104,95,289,95z M288.5,97c-0.276,0-0.5-0.224-0.5-0.5s0.224-0.5,0.5-0.5s0.5,0.224,0.5,0.5S288.776,97,288.5,97z")
+    .attr("fill", "rgb(3, 169, 244)");
+    angryEmoHighlight.append("path").attr("d", "M280.775,102.553l0.449,0.895c2.389-1.199,5.162-1.199,7.551,0l0.449-0.895C286.555,101.213,283.445,101.213,280.775,102.553z")
+    .attr("fill", "rgb(3, 169, 244)");
+    angryEmo.append("path").attr("d", "M285,82c-7.18,0-13,5.82-13,13s5.82,13,13,13c7.18,0,13-5.82,13-13S292.18,82,285,82z M285,106c-6.065,0-11-4.935-11-11c0-0.936,0.13-1.839,0.351-2.707C276.422,93.546,280.408,94,285,94c1.713,0,3.337-0.066,4.814-0.209c-0.954-0.87-2.228-2.282-2.814-4.043c-0.83-2.49,3.164,1.908,6.261,3.475c0.948-0.242,1.759-0.548,2.389-0.93C295.87,93.161,296,94.064,296,95C296,101.065,291.065,106,285,106z")
+    .attr("fill", "rgb(51, 10, 50)");
+    angryEmo.append("path").attr("d", "M283,97c0-1.104-0.896-2-2-2s-2,0.896-2,2c0,1.104,0.896,2,2,2S283,98.104,283,97z M281.5,96c0.276,0,0.5,0.224,0.5,0.5s-0.224,0.5-0.5,0.5s-0.5-0.224-0.5-0.5S281.224,96,281.5,96z")
+    .attr("fill", "rgb(51, 10, 50)");
+    angryEmo.append("path").attr("d", "M289,95c-1.104,0-2,0.896-2,2c0,1.104,0.896,2,2,2s2-0.896,2-2C291,95.896,290.104,95,289,95z M288.5,97c-0.276,0-0.5-0.224-0.5-0.5s0.224-0.5,0.5-0.5s0.5,0.224,0.5,0.5S288.776,97,288.5,97z")
+    .attr("fill", "rgb(51, 10, 50)");
+    angryEmo.append("path").attr("d", "M280.775,102.553l0.449,0.895c2.389-1.199,5.162-1.199,7.551,0l0.449-0.895C286.555,101.213,283.445,101.213,280.775,102.553z")
+    .attr("fill", "rgb(51, 10, 50)");
+    // Equal emoticon
+    var equalEmoHighlight = drawingArea.append("g").attr("class", "equalHighlight").attr("transform", "translate(-460,160)");
+    var equalEmo = drawingArea.append("g").attr("class", "equal").attr("transform", "translate(-460,160)")
+    .on("mouseover", function () {
+    halo = d3.select("g.equalHighlight").attr("filter", "url(#glower)");
+    var i = 0;
+    triggerBlinker = setTimeout(function () {
+    var blinker = setInterval(function () {
+    if (i == 0 || i == 2 || i == 4) {
+    halo.style("display", "none");
+    i++;
+    }
+    else if (i == 1 || i == 3 || i == 5) {
+    halo.style("display", "block");
+    i++;
+    }
+    else {
+    clearInterval(blinker);
+    d3.select("#plusOneEqual")
+    .attr("fill-opacity", "1")
+    .transition()
+    .ease(d3.easeLinear)
+    .duration(1500)
+    .attr("transform", "translate(0, -25)")
+    .attr("fill-opacity", "0");
+    d3.select("#plusOneEqual").attr("transform", "translate(0, 0)");
+    score[2] = score[2] + 1;
+    updateBars(score);
+    }
+    }, 120);
+    }
+    , 1000);
+    })
+    .on("mouseout", function () {
+    halo.attr("filter", "none");
+    clearInterval(triggerBlinker);
+    });
+    // .style("filter", "url(#drop-shadow)");
+    equalEmoHighlight.append("path").attr("d", "M585,108c7.18,0,13-5.82,13-13s-5.82-13-13-13s-13,5.82-13,13S577.82,108,585,108z M574.351,92.293C576.422,93.546,580.408,94,585,94c1.713,0,3.337-0.066,4.815-0.209c-0.954-0.87-2.228-2.282-2.815-4.043c-0.83-2.49,3.164,1.908,6.261,3.475c0.948-0.242,1.759-0.548,2.389-0.93C595.87,93.161,596,94.064,596,95c0,6.065-4.935,11-11,11c-6.065,0-11-4.935-11-11C574,94.064,574.13,93.161,574.351,92.293z")
+    .attr("fill", "rgb(3, 169, 244)");
+    equalEmoHighlight.append("path").attr("d", "M581,99c1.104,0,2-0.896,2-2c0-1.104-0.896-2-2-2s-2,0.896-2,2C579,98.104,579.896,99,581,99z M581.5,96c0.276,0,0.5,0.224,0.5,0.5s-0.224,0.5-0.5,0.5c-0.276,0-0.5-0.224-0.5-0.5S581.224,96,581.5,96z")
+    .attr("fill", "rgb(3, 169, 244)");
+    equalEmoHighlight.append("path").attr("d", "M589,99c1.104,0,2-0.896,2-2c0-1.104-0.896-2-2-2s-2,0.896-2,2C587,98.104,587.896,99,589,99z M588.5,96c0.276,0,0.5,0.224,0.5,0.5s-0.224,0.5-0.5,0.5c-0.276,0-0.5-0.224-0.5-0.5S588.224,96,588.5,96z")
+    .attr("fill", "rgb(3, 169, 244)");
+    equalEmoHighlight.append("rect").attr("x", "581").attr("y", "102").attr("width", "8").attr("height", "1").attr("fill", "rgb(3, 169, 244)");
+    equalEmo.append("path").attr("d", "M585,108c7.18,0,13-5.82,13-13s-5.82-13-13-13s-13,5.82-13,13S577.82,108,585,108z M574.351,92.293C576.422,93.546,580.408,94,585,94c1.713,0,3.337-0.066,4.815-0.209c-0.954-0.87-2.228-2.282-2.815-4.043c-0.83-2.49,3.164,1.908,6.261,3.475c0.948-0.242,1.759-0.548,2.389-0.93C595.87,93.161,596,94.064,596,95c0,6.065-4.935,11-11,11c-6.065,0-11-4.935-11-11C574,94.064,574.13,93.161,574.351,92.293z")
+    .attr("fill", "rgb(76, 10, 50)");
+    equalEmo.append("path").attr("d", "M581,99c1.104,0,2-0.896,2-2c0-1.104-0.896-2-2-2s-2,0.896-2,2C579,98.104,579.896,99,581,99z M581.5,96c0.276,0,0.5,0.224,0.5,0.5s-0.224,0.5-0.5,0.5c-0.276,0-0.5-0.224-0.5-0.5S581.224,96,581.5,96z")
+    .attr("fill", "rgb(76, 10, 50)");
+    equalEmo.append("path").attr("d", "M589,99c1.104,0,2-0.896,2-2c0-1.104-0.896-2-2-2s-2,0.896-2,2C587,98.104,587.896,99,589,99z M588.5,96c0.276,0,0.5,0.224,0.5,0.5s-0.224,0.5-0.5,0.5c-0.276,0-0.5-0.224-0.5-0.5S588.224,96,588.5,96z")
+    .attr("fill", "rgb(76, 10, 50)");
+    equalEmo.append("rect").attr("x", "581").attr("y", "102").attr("width", "8").attr("height", "1").attr("fill", "rgb(76, 10, 50)");
+    // Happy emoticon
+    var happyEmoHighlight = drawingArea.append("g").attr("class", "happyHighlight").attr("transform", "translate(50,160)");
+    // .style("filter", "url(#drop-shadow)");
+    var happyEmo = drawingArea.append("g").attr("class", "happy").attr("transform", "translate(50,160)")
+    .on("mouseover", function () {
+    halo = d3.select("g.happyHighlight").attr("filter", "url(#glower)");
+    var i = 0;
+    triggerBlinker = setTimeout(function () {
+    var blinker = setInterval(function () {
+    if (i == 0 || i == 2 || i == 4) {
+    halo.style("display", "none");
+    i++;
+    }
+    else if (i == 1 || i == 3 || i == 5) {
+    halo.style("display", "block");
+    i++;
+    }
+    else {
+    clearInterval(blinker);
+    d3.select("#plusOneHappy")
+    .attr("fill-opacity", "1")
+    .transition()
+    .ease(d3.easeLinear)
+    .duration(1500)
+    .attr("transform", "translate(0, -25)")
+    .attr("fill-opacity", "0");
+    d3.select("#plusOneHappy").attr("transform", "translate(0, 0)");
+    score[3] = score[3] + 1;
+    updateBars(score);
+    }
+    }, 120);
+    }
+    , 1000);
+    })
+    .on("mouseout", function () {
+    halo.attr("filter", "none");
+    clearInterval(triggerBlinker);
+    });
+    // .style("filter", "url(#drop-shadow)");
+    happyEmoHighlight.append("path").attr("d", "M105,108c7.18,0,13-5.82,13-13s-5.82-13-13-13c-7.18,0-13,5.82-13,13S97.82,108,105,108z M94.351,92.293C96.422,93.546,100.408,94,105,94c1.713,0,3.337-0.066,4.814-0.209c-0.954-0.87-2.228-2.282-2.814-4.043c-0.83-2.49,3.164,1.908,6.261,3.475c0.948-0.242,1.759-0.548,2.389-0.93C115.87,93.161,116,94.064,116,95c0,6.065-4.935,11-11,11s-11-4.935-11-11C94,94.064,94.13,93.161,94.351,92.293z")
+    .attr("fill", "rgb(3, 169, 244)");
+    happyEmoHighlight.append("path").attr("d", "M101,99c1.104,0,2-0.896,2-2c0-1.104-0.896-2-2-2s-2,0.896-2,2C99,98.104,99.896,99,101,99z M101.5,96c0.276,0,0.5,0.224,0.5,0.5s-0.224,0.5-0.5,0.5c-0.276,0-0.5-0.224-0.5-0.5S101.224,96,101.5,96z")
+    .attr("fill", "rgb(3, 169, 244)");
+    happyEmoHighlight.append("path").attr("d", "M109,99c1.104,0,2-0.896,2-2c0-1.104-0.896-2-2-2s-2,0.896-2,2C107,98.104,107.896,99,109,99z M108.5,96c0.276,0,0.5,0.224,0.5,0.5s-0.224,0.5-0.5,0.5c-0.276,0-0.5-0.224-0.5-0.5S108.224,96,108.5,96z")
+    .attr("fill", "rgb(3, 169, 244)");
+    happyEmoHighlight.append("path").attr("d", "M101.445,100.773l-0.893,0.45c0.047,0.093,1.176,2.276,4.447,2.276s4.4-2.184,4.447-2.276l-0.893-0.45c-0.037,0.07-0.926,1.727-3.555,1.727C102.371,102.5,101.482,100.844,101.445,100.773z")
+    .attr("fill", "rgb(3, 169, 244)");
+    happyEmo.append("path").attr("d", "M105,108c7.18,0,13-5.82,13-13s-5.82-13-13-13c-7.18,0-13,5.82-13,13S97.82,108,105,108z M94.351,92.293C96.422,93.546,100.408,94,105,94c1.713,0,3.337-0.066,4.814-0.209c-0.954-0.87-2.228-2.282-2.814-4.043c-0.83-2.49,3.164,1.908,6.261,3.475c0.948-0.242,1.759-0.548,2.389-0.93C115.87,93.161,116,94.064,116,95c0,6.065-4.935,11-11,11s-11-4.935-11-11C94,94.064,94.13,93.161,94.351,92.293z")
+    .attr("fill", "rgb(102, 10, 50)");
+    happyEmo.append("path").attr("d", "M101,99c1.104,0,2-0.896,2-2c0-1.104-0.896-2-2-2s-2,0.896-2,2C99,98.104,99.896,99,101,99z M101.5,96c0.276,0,0.5,0.224,0.5,0.5s-0.224,0.5-0.5,0.5c-0.276,0-0.5-0.224-0.5-0.5S101.224,96,101.5,96z")
+    .attr("fill", "rgb(102, 10, 50)");
+    happyEmo.append("path").attr("d", "M109,99c1.104,0,2-0.896,2-2c0-1.104-0.896-2-2-2s-2,0.896-2,2C107,98.104,107.896,99,109,99z M108.5,96c0.276,0,0.5,0.224,0.5,0.5s-0.224,0.5-0.5,0.5c-0.276,0-0.5-0.224-0.5-0.5S108.224,96,108.5,96z")
+    .attr("fill", "rgb(102, 10, 50)");
+    happyEmo.append("path").attr("d", "M101.445,100.773l-0.893,0.45c0.047,0.093,1.176,2.276,4.447,2.276s4.4-2.184,4.447-2.276l-0.893-0.45c-0.037,0.07-0.926,1.727-3.555,1.727C102.371,102.5,101.482,100.844,101.445,100.773z")
+    .attr("fill", "rgb(102, 10, 50)");
+    // Very happy emoticon
+    var veryHappyEmoHighlight = drawingArea.append("g").attr("class", "veryHappyHighlight").attr("transform", "translate(-160,160)");
+    // .style("filter", "url(#drop-shadow)");
+    var veryHappyEmo = drawingArea.append("g").attr("class", "veryHappy").attr("transform", "translate(-160,160)")
+    .on("mouseover", function () {
+    halo = d3.select("g.veryHappyHighlight").attr("filter", "url(#glower)");
+    var i = 0;
+    triggerBlinker = setTimeout(function () {
+    var blinker = setInterval(function () {
+    if (i == 0 || i == 2 || i == 4) {
+    halo.style("display", "none");
+    i++;
+    }
+    else if (i == 1 || i == 3 || i == 5) {
+    halo.style("display", "block");
+    i++;
+    }
+    else {
+    clearInterval(blinker);
+    d3.select("#plusOneVeryHappy")
+    .attr("fill-opacity", "1")
+    .transition()
+    .ease(d3.easeLinear)
+    .duration(1500)
+    .attr("transform", "translate(0, -25)")
+    .attr("fill-opacity", "0");
+    d3.select("#plusOneVeryHappy").attr("transform", "translate(0, 0)");
+    score[4] = score[4] + 1;
+    updateBars(score);
+    }
+    }, 120);
+    }
+    , 1000);
+    })
+    .on("mouseout", function () {
+    halo.attr("filter", "none");
+    clearInterval(triggerBlinker);
+    });
+    veryHappyEmoHighlight.append("path").attr("d", "M343.121,96.516l-4-1c-0.267-0.068-0.539,0.096-0.605,0.363c-0.068,0.268,0.096,0.539,0.363,0.605l2.688,0.673l-2.791,1.395c-0.247,0.123-0.347,0.424-0.224,0.671c0.088,0.175,0.264,0.276,0.447,0.276c0.076,0,0.152-0.018,0.224-0.053l4-2c0.187-0.094,0.296-0.294,0.273-0.502C343.475,96.737,343.324,96.566,343.121,96.516z")
+    .attr("fill", "rgb(3, 169, 244)");
+    veryHappyEmoHighlight.append("path").attr("d", "M351.224,98.553l-2.791-1.395l2.689-0.673c0.268-0.066,0.432-0.338,0.363-0.605c-0.066-0.268-0.34-0.432-0.605-0.363l-4,1c-0.203,0.051-0.354,0.222-0.376,0.43c-0.022,0.208,0.087,0.408,0.273,0.502l4,2c0.071,0.035,0.147,0.053,0.224,0.053c0.184,0,0.359-0.102,0.447-0.276C351.57,98.977,351.471,98.676,351.224,98.553z")
+    .attr("fill", "rgb(3, 169, 244)");
+    veryHappyEmoHighlight.append("path").attr("d", "M345,82c-7.18,0-13,5.82-13,13s5.82,13,13,13c7.18,0,13-5.82,13-13S352.18,82,345,82z M348.947,105.256C350.578,103.483,351,101,351,101h-12c0,0,0.422,2.483,2.053,4.256C336.934,103.664,334,99.673,334,95    c0-0.936,0.13-1.839,0.351-2.707C336.422,93.546,340.407,94,345,94c1.713,0,3.337-0.066,4.814-0.209c-0.954-0.87-2.228-2.282-2.814-4.043c-0.83-2.49,3.164,1.908,6.261,3.475c0.948-0.242,1.759-0.548,2.389-0.93C355.87,93.161,356,94.064,356,95C356,99.673,353.066,103.664,348.947,105.256z")
+    .attr("fill", "rgb(3, 169, 244)");
+    veryHappyEmo.append("path").attr("d", "M343.121,96.516l-4-1c-0.267-0.068-0.539,0.096-0.605,0.363c-0.068,0.268,0.096,0.539,0.363,0.605l2.688,0.673l-2.791,1.395c-0.247,0.123-0.347,0.424-0.224,0.671c0.088,0.175,0.264,0.276,0.447,0.276c0.076,0,0.152-0.018,0.224-0.053l4-2c0.187-0.094,0.296-0.294,0.273-0.502C343.475,96.737,343.324,96.566,343.121,96.516z")
+    .attr("fill", "rgb(127, 10, 50)");
+    veryHappyEmo.append("path").attr("d", "M351.224,98.553l-2.791-1.395l2.689-0.673c0.268-0.066,0.432-0.338,0.363-0.605c-0.066-0.268-0.34-0.432-0.605-0.363l-4,1c-0.203,0.051-0.354,0.222-0.376,0.43c-0.022,0.208,0.087,0.408,0.273,0.502l4,2c0.071,0.035,0.147,0.053,0.224,0.053c0.184,0,0.359-0.102,0.447-0.276C351.57,98.977,351.471,98.676,351.224,98.553z")
+    .attr("fill", "rgb(127, 10, 50)");
+    veryHappyEmo.append("path").attr("d", "M345,82c-7.18,0-13,5.82-13,13s5.82,13,13,13c7.18,0,13-5.82,13-13S352.18,82,345,82z M348.947,105.256C350.578,103.483,351,101,351,101h-12c0,0,0.422,2.483,2.053,4.256C336.934,103.664,334,99.673,334,95    c0-0.936,0.13-1.839,0.351-2.707C336.422,93.546,340.407,94,345,94c1.713,0,3.337-0.066,4.814-0.209c-0.954-0.87-2.228-2.282-2.814-4.043c-0.83-2.49,3.164,1.908,6.261,3.475c0.948-0.242,1.759-0.548,2.389-0.93C355.87,93.161,356,94.064,356,95C356,99.673,353.066,103.664,348.947,105.256z")
+    .attr("fill", "rgb(127, 10, 50)");
+    drawingArea.append("g").attr("id", "plusOneVeryAngry").attr("fill-opacity", "0");
+    d3.select("#plusOneVeryAngry").append("text")
+    .text("+1")
+    .attr("text-anchor", "middle")
+    .attr("x", "65")
+    .attr("y", "238")
+    .attr("font-size", "10")
+    .attr("font-family", "cocogoose")
+    .attr("fill", "rgb(3, 169, 244)")
+    .attr("filter", "url(#glower)");
+    d3.select("#plusOneVeryAngry").append("text")
+    .text("+1")
+    .attr("text-anchor", "middle")
+    .attr("x", "65")
+    .attr("y", "238")
+    .attr("font-size", "10")
+    .attr("font-family", "cocogoose")
+    .attr("fill", "rgb(25, 10, 50)");
+    drawingArea.append("g").attr("id", "plusOneAngry").attr("fill-opacity", "0");
+    d3.select("#plusOneAngry").append("text")
+    .text("+1")
+    .attr("text-anchor", "middle")
+    .attr("x", "95")
+    .attr("y", "238")
+    .attr("font-size", "10")
+    .attr("font-family", "cocogoose")
+    .attr("fill", "rgb(3, 169, 244)")
+    .attr("filter", "url(#glower)");
+    d3.select("#plusOneAngry").append("text")
+    .text("+1")
+    .attr("text-anchor", "middle")
+    .attr("x", "95")
+    .attr("y", "238")
+    .attr("font-size", "10")
+    .attr("font-family", "cocogoose")
+    .attr("fill", "rgb(51, 10, 50)");
+    drawingArea.append("g").attr("id", "plusOneEqual").attr("fill-opacity", "0");
+    d3.select("#plusOneEqual").append("text")
+    .text("+1")
+    .attr("text-anchor", "middle")
+    .attr("x", "125")
+    .attr("y", "238")
+    .attr("font-size", "10")
+    .attr("font-family", "cocogoose")
+    .attr("fill", "rgb(3, 169, 244)")
+    .attr("filter", "url(#glower)");
+    d3.select("#plusOneEqual").append("text")
+    .text("+1")
+    .attr("text-anchor", "middle")
+    .attr("x", "125")
+    .attr("y", "238")
+    .attr("font-size", "10")
+    .attr("font-family", "cocogoose")
+    .attr("fill", "rgb(76, 10, 50)");
+    drawingArea.append("g").attr("id", "plusOneHappy").attr("fill-opacity", "0");
+    d3.select("#plusOneHappy").append("text")
+    .text("+1")
+    .attr("text-anchor", "middle")
+    .attr("x", "155")
+    .attr("y", "238")
+    .attr("font-size", "10")
+    .attr("font-family", "cocogoose")
+    .attr("fill", "rgb(3, 169, 244)")
+    .attr("filter", "url(#glower)");
+    d3.select("#plusOneHappy").append("text")
+    .text("+1")
+    .attr("text-anchor", "middle")
+    .attr("x", "155")
+    .attr("y", "238")
+    .attr("font-size", "10")
+    .attr("font-family", "cocogoose")
+    .attr("fill", "rgb(102, 10, 50)");
+    drawingArea.append("g").attr("id", "plusOneVeryHappy").attr("fill-opacity", "0");
+    d3.select("#plusOneVeryHappy").append("text")
+    .text("+1")
+    .attr("text-anchor", "middle")
+    .attr("x", "185")
+    .attr("y", "238")
+    .attr("font-size", "10")
+    .attr("font-family", "cocogoose")
+    .attr("fill", "rgb(3, 169, 244)")
+    .attr("filter", "url(#glower)");
+    d3.select("#plusOneVeryHappy").append("text")
+    .text("+1")
+    .attr("text-anchor", "middle")
+    .attr("x", "185")
+    .attr("y", "238")
+    .attr("font-size", "10")
+    .attr("font-family", "cocogoose")
+    .attr("fill", "rgb(127, 10, 50)");
+    // setInterval(neon, randomFailureFreq);
+    function updateBars(score) {
+    drawingArea.selectAll("rect.bars")
+    .data(score)
+    .transition()
+    .duration(700)
+    .attr("y", function (d, i) { return yArea - yPadding - Math.floor((d / scale) * (yArea - 2 * yPadding)); })
+    .attr("height", function (d, i) { return Math.floor((d / scale) * (yArea - 2 * yPadding)); });
+    drawingArea.selectAll("rect.barGlow")
+    .data(score)
+    .transition()
+    .duration(700)
+    .attr("y", function (d, i) { return yArea - yPadding - Math.floor((d / scale) * (yArea - 2 * yPadding)) + 1; })
+    .attr("height", function (d, i) { return Math.floor((d / scale) * (yArea - 2 * yPadding)) - 2; });
+    }
+
