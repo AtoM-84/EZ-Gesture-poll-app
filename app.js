@@ -28,6 +28,7 @@ app.set('view engine', 'jade');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/scripts/jquery', express.static(path.join(__dirname, 'node_modules/jquery/dist')));
 app.use('/scripts/d3', express.static(path.join(__dirname, 'node_modules/d3/build')));
+app.use('/scripts/underscore', express.static(path.join(__dirname, 'node_modules/underscore')));
 
 // Set scripts to run when requesting subpath
 
