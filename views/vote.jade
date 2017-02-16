@@ -22,6 +22,7 @@ html
     var columStart = 1;
     var columEnd = 6;
     var barSpacing = 10;
+    var textSpacing = 4;
     var barWidth = (yArea - 2 * yPadding) / (columEnd - columStart) - barSpacing;
     var scale = 10;
     var score = [0.5, 0.5, 0.5, 0.5, 0.5];
@@ -151,6 +152,18 @@ html
     .duration(700)
     .attr("y", function (d, i) { return 100 + yArea - yPadding - Math.floor((d / scale) * (yArea - 2 * yPadding)) + 1; })
     .attr("height", function (d, i) { return Math.floor((d / scale) * (yArea - 2 * yPadding)) - 2; });
+    drawingArea.selectAll("text.values")
+    .data(score).enter()
+    .append("text").attr("class", "values")
+    .text(function(d) {return d-0.5;})
+    .attr("text-anchor", "middle")
+    .attr("x", function(d,i) {return xPadding + barSpacing/2 + barWidth/2 + i * (barWidth + barSpacing);})
+    .attr("y", function(d,i) {return yArea - yPadding - 1 + 100 - Math.floor((d / scale)*(yArea - 2 * yPadding)) - textSpacing; })
+    .attr("font-family", "cocogoose")
+    .attr("font-size", "10")
+    .attr("fill", function(d,i) {return barColor[i];});
+    
+    
     var triggerBlinker;
     var blinker;
     var halo;
@@ -695,7 +708,7 @@ html
     .attr("fill", "rgb(127, 10, 50)");
     // setInterval(neon, randomFailureFreq);
     function updateBars(score) {
-      if(_.max(score) > scale - 2)
+      if(_.max(score) > scale - 1)
       {
         scale = scale + 10;
         }
@@ -703,7 +716,7 @@ html
     .data(score)
     .transition()
     .duration(700)
-    .attr("y", function (d, i) { return 100+yArea - yPadding - Math.floor((d / scale) * (yArea - 2 * yPadding)); })
+    .attr("y", function (d, i) { return 100 + yArea - yPadding - Math.floor((d / scale) * (yArea - 2 * yPadding)); })
     .attr("height", function (d, i) { return Math.floor((d / scale) * (yArea - 2 * yPadding)); });
     drawingArea.selectAll("rect.barGlow")
     .data(score)
@@ -711,6 +724,13 @@ html
     .duration(700)
     .attr("y", function (d, i) { return 100+yArea - yPadding - Math.floor((d / scale) * (yArea - 2 * yPadding)) + 1; })
     .attr("height", function (d, i) { return Math.floor((d / scale) * (yArea - 2 * yPadding)) - 2; });
+    drawingArea.selectAll("text.values")
+    .data(score)
+    .transition()
+    .duration(700)
+    .text(function(d) {return d-0.5;})
+    .attr("x", function(d,i) {return xPadding + barSpacing/2 + barWidth/2 + i * (barWidth + barSpacing);})
+    .attr("y", function(d,i) {return yArea - yPadding - 1 + 100 - Math.floor((d / scale) * (yArea - 2 * yPadding))  - textSpacing; });
     }
 
     

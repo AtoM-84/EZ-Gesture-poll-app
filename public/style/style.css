@@ -32,7 +32,7 @@ html, body {
 h1.neon{
     float: left;
     position: absolute;
-    top: 4vh;
+    top: 10vh;
     color: rgb(160, 10, 50);
     height: 10vh;
     padding: 5vw;
